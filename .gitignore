@@ -1,0 +1,24 @@
+# Backend
+backend/build/
+backend/data/
+backend/.gradle/
+backend/out/
+backend/*.iml
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/*.iml
+android/.idea/
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Misc
+*.log
+*.class
+*.jar

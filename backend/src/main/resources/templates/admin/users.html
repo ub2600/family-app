@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users - FamilyApp Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/admin.css}" rel="stylesheet">
+</head>
+<body>
+<div class="admin-wrapper">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <span class="brand-icon">👨‍👩‍👧‍👦</span>
+            <span class="brand-text">FamilyApp</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a th:href="@{/admin/dashboard}"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a></li>
+            <li class="active"><a th:href="@{/admin/users}"><i class="fas fa-users"></i><span>Users</span></a></li>
+            <li><a th:href="@{/admin/families}"><i class="fas fa-house-chimney"></i><span>Families</span></a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <a th:href="@{/admin/logout}" class="btn-logout"><i class="fas fa-sign-out-alt"></i><span>Sign Out</span></a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="content-header">
+            <div>
+                <h1>Users</h1>
+                <p>Manage all registered users</p>
+            </div>
+            <div class="header-stats">
+                <span class="badge bg-primary" th:text="${#lists.size(users)} + ' Total'">0 Total</span>
+            </div>
+        </header>
+
+        <div class="content-card">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Family</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="user : ${users}">
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="user-avatar-sm" th:text="${#strings.substring(user.name, 0, 1)}">A</div>
+                                <a th:href="@{/admin/users/{id}(id=${user.id})}" class="text-light text-decoration-none"
+                                   th:text="${user.name}">Name</a>
+                            </div>
+                        </td>
+                        <td th:text="${user.email}">email</td>
+                        <td>
+                            <span class="role-badge" th:classappend="${user.role == 'ADMIN'} ? 'role-admin' : (${user.role == 'PARENT'} ? 'role-parent' : 'role-child')"
+                                  th:text="${user.role}">ROLE</span>
+                        </td>
+                        <td th:text="${user.familyName ?: '—'}">Family</td>
+                        <td>
+                            <span class="status-dot" th:classappend="${user.active} ? 'active' : 'inactive'"></span>
+                            <span th:text="${user.active} ? 'Active' : 'Inactive'">Active</span>
+                        </td>
+                        <td th:text="${#temporals.format(user.createdAt, 'dd MMM yyyy')}">Date</td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a th:href="@{/admin/users/{id}(id=${user.id})}" class="btn btn-sm btn-outline-info"
+                                   title="View"><i class="fas fa-eye"></i></a>
+                                <form th:action="@{/admin/users/{id}/toggle(id=${user.id})}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm"
+                                            th:classappend="${user.active} ? 'btn-outline-warning' : 'btn-outline-success'"
+                                            th:title="${user.active} ? 'Deactivate' : 'Activate'">
+                                        <i class="fas" th:classappend="${user.active} ? 'fa-ban' : 'fa-check'"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
