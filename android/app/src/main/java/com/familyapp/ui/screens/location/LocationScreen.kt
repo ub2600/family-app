@@ -17,90 +17,72 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.familyapp.data.model.UserResponse
+import com.familyapp.data.repository.FamilyRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-data class FamilyMemberLocation(
-    val name: String, val role: String, val lastSeen: String,
-    val location: String, val isOnline: Boolean, val color: Color
-)
+@HiltViewModel
+class LocationViewModel @Inject constructor(private val repo: FamilyRepository) : ViewModel() {
+    private val _members = MutableStateFlow<List<UserResponse>>(emptyList())
+    val members = _members.asStateFlow()
+
+    init { load() }
+
+    fun load() { viewModelScope.launch { repo.getFamilyLocations().fold(onSuccess = { _members.value = it }, onFailure = {}) } }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LocationScreen(onNavigateBack: () -> Unit) {
-    val members = remember {
-        listOf(
-            FamilyMemberLocation("Mum", "Parent", "Just now", "Home", true, Color(0xFF7C5CFC)),
-            FamilyMemberLocation("Dad", "Parent", "5 min ago", "Tesco, High Street", true, Color(0xFF3B82F6)),
-            FamilyMemberLocation("Tom", "Child", "15 min ago", "St Mary's School", true, Color(0xFF22C55E)),
-            FamilyMemberLocation("Emma", "Child", "2 hours ago", "Home", false, Color(0xFFEC4899))
-        )
-    }
+fun LocationScreen(onNavigateBack: () -> Unit, viewModel: LocationViewModel = hiltViewModel()) {
+    val members by viewModel.members.collectAsState()
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Family Location", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.Filled.ArrowBack, "Back") } }
-            )
-        }
+        topBar = { TopAppBar(title = { Text("Family Location", fontWeight = FontWeight.Bold) }, navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.Filled.ArrowBack, "Back") } }) }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(vertical = 8.dp)
-        ) {
-            // Map placeholder
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth().height(250.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
+                Card(Modifier.fillMaxWidth().height(200.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(16.dp)) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Filled.Map, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f))
+                            Icon(Icons.Filled.Map, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.height(8.dp))
-                            Text("Map View", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Add your Google Maps API key", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f))
+                            Text("Map View", fontWeight = FontWeight.Medium)
+                            Text("Add a Google Maps API key to enable", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
-
             item { Text("Family Members", fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
-
+            if (members.isEmpty()) {
+                item { Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(12.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("👥", fontSize = 48.sp); Spacer(Modifier.height(8.dp)); Text("No family members found") }
+                } }
+            }
             items(members) { member ->
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
+                val hasLocation = member.lastLatitude != null
+                val colors = listOf(Color(0xFF7C5CFC), Color(0xFF22C55E), Color(0xFF3B82F6), Color(0xFFF97316), Color(0xFFEC4899))
+                val color = colors[(member.id % colors.size).toInt()]
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(12.dp)) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box {
-                            Box(Modifier.size(48.dp).clip(CircleShape).background(member.color.copy(0.2f)),
-                                contentAlignment = Alignment.Center) {
-                                Text(member.name.first().toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = member.color)
-                            }
-                            if (member.isOnline) {
-                                Box(Modifier.size(14.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant).align(Alignment.BottomEnd)) {
-                                    Box(Modifier.size(10.dp).clip(CircleShape).background(Color(0xFF22C55E)).align(Alignment.Center))
-                                }
-                            }
+                        Box(Modifier.size(48.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) {
+                            Text(member.name.first().toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
-                        Spacer(Modifier.width(14.dp))
+                        Box(Modifier.offset(x = (-8).dp, y = 16.dp).size(12.dp).clip(CircleShape).background(if (member.active) Color(0xFF22C55E) else Color.Gray).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape))
+                        Spacer(Modifier.width(4.dp))
                         Column(Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(member.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                                Spacer(Modifier.width(6.dp))
-                                Text(member.role, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.background(MaterialTheme.colorScheme.outline.copy(0.2f), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp))
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.LocationOn, null, Modifier.size(14.dp), tint = member.color)
-                                Spacer(Modifier.width(4.dp))
-                                Text(member.location, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Text("Last seen: ${member.lastSeen}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f))
+                            Text(member.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                            if (hasLocation) Text("📍 ${member.lastLatitude}, ${member.lastLongitude}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            else Text("No location shared", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            member.lastLocationUpdate?.let { Text("Updated: $it", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f)) }
                         }
-                        Icon(Icons.Filled.Navigation, null, tint = member.color, modifier = Modifier.size(24.dp))
+                        if (hasLocation) Icon(Icons.Filled.NearMe, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
